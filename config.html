@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Meeting Links – Einrichtung</title>
+  <link rel="stylesheet" href="styles.css">
+  <script src="vendor/MicrosoftTeams.min.js"></script>
+</head>
+<body>
+  <main class="shell">
+    <section class="card">
+      <div class="eyebrow">Microsoft Teams</div>
+      <h1>Meeting Links hinzufügen</h1>
+      <p>Klicke auf <strong>Speichern</strong>, um die App zu dieser Besprechung hinzuzufügen.
+        Sie erscheint danach im Side Panel und kann von dort auf die Meeting-Bühne geteilt werden.</p>
+      <p id="status" class="status" aria-live="polite"></p>
+    </section>
+  </main>
+  <script>
+    (async () => {
+      const status = document.getElementById("status");
+      try {
+        await microsoftTeams.app.initialize();
+        const base = new URL(".", window.location.href).href;
+        microsoftTeams.pages.config.registerOnSaveHandler((saveEvent) => {
+          microsoftTeams.pages.config
+            .setConfig({
+              entityId: "meeting-links",
+              suggestedDisplayName: "Meeting Links",
+              contentUrl: base + "index.html",
+              websiteUrl: base + "index.html"
+            })
+            .then(() => saveEvent.notifySuccess())
+            .catch((err) => saveEvent.notifyFailure(String(err?.message || err)));
+        });
+        microsoftTeams.pages.config.setValidityState(true);
+      } catch (err) {
+        status.textContent = "Diese Seite muss innerhalb von Microsoft Teams geöffnet werden.";
+      }
+    })();
+  </script>
+</body>
+</html>
