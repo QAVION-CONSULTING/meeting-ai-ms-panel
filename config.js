@@ -1,12 +1,12 @@
 window.MEETING_LINKS_CONFIG = {
-  "title": "Meeting Links",
-  "subtitle": "Schnellzugriff während der Besprechung",
-  "button1": {
-    "label": "Google öffnen",
-    "url": "https://www.google.de"
+  "title": "OttoMeet",
+  "subtitle": "Einwilligung zur Transkription dieser Besprechung",
+  "consent": {
+    "label": "I Consent",
+    "backendUrl": ""
   },
-  "button2": {
-    "label": "YouTube öffnen",
-    "url": "https://www.youtube.de"
+  "ottomeet": {
+    "label": "Open OttoMeet",
+    "url": "https://www.google.de"
   }
 };
