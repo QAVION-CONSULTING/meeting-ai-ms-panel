@@ -1,4 +1,5 @@
 * { box-sizing: border-box; }
+[hidden] { display: none !important; }
 :root {
   --fg: #242424;
   --fg-muted: #616161;
@@ -56,18 +57,23 @@ body { margin: 0; background: transparent; font-size: 14px; }
 
 .tabs {
   display: flex;
-  gap: 4px;
-  padding: 0 12px;
+  padding: 0 6px;
   border-bottom: 1px solid var(--border);
+  overflow-x: auto;
+  scrollbar-width: none;
 }
+.tabs::-webkit-scrollbar { display: none; }
 .tab {
   appearance: none;
+  flex: none;
   border: 0;
   background: none;
   color: var(--fg-muted);
   font: inherit;
+  font-size: 13px;
   font-weight: 600;
-  padding: 10px 6px 8px;
+  white-space: nowrap;
+  padding: 10px 6px 7px;
   border-bottom: 3px solid transparent;
   cursor: pointer;
 }
