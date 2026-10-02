@@ -1,12 +1,11 @@
-window.MEETING_LINKS_CONFIG = {
-  "title": "OttoMeet",
-  "subtitle": "Einwilligung zur Transkription dieser Besprechung",
-  "consent": {
-    "label": "I Consent",
-    "backendUrl": ""
+window.OTTOMEET_CONFIG = {
+  "version": "1.0.0",
+  "backendUrl": "",
+  "statusPollSeconds": 10,
+  "labels": {
+    "consent": "Consent geben",
+    "withdraw": "Consent ablehnen",
+    "ottomeet": "Transkript starten (OttoMeet öffnen)"
   },
-  "ottomeet": {
-    "label": "Open OttoMeet",
-    "url": "https://www.google.de"
-  }
+  "ottomeetUrl": "https://www.google.de"
 };

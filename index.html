@@ -10,19 +10,52 @@
   <script defer src="app.js"></script>
 </head>
 <body>
-  <main class="shell">
-    <section class="card">
-      <div class="eyebrow">Microsoft Teams</div>
-      <h1 id="title">OttoMeet</h1>
-      <p id="subtitle"></p>
+  <nav class="tabs" role="tablist">
+    <button class="tab active" role="tab" data-tab="meeting" aria-selected="true">Meeting</button>
+    <button class="tab" role="tab" data-tab="summary" aria-selected="false">Zusammenfassung</button>
+    <button class="tab" role="tab" data-tab="settings" aria-selected="false">Einstellungen</button>
+  </nav>
 
-      <div class="actions">
-        <button id="consentButton" class="primary" type="button">I Consent</button>
-        <p class="hint">Öffnet die OttoMeet-Einwilligung im Browser. Anmeldung mit deinem Microsoft-Konto.</p>
-        <button id="ottomeetButton" class="secondary" type="button">Open OttoMeet</button>
+  <main>
+    <section id="tab-meeting" class="panel" role="tabpanel">
+      <div id="statusCard" class="status-card state-pending">
+        <div id="statusIcon" class="status-icon" aria-hidden="true">!</div>
+        <div>
+          <h2 id="statusTitle">Status wird geladen …</h2>
+          <p id="statusText"></p>
+        </div>
       </div>
 
-      <p id="status" class="status" aria-live="polite"></p>
+      <button id="consentButton" class="primary" type="button">Consent geben</button>
+      <button id="withdrawButton" class="danger" type="button" hidden>Consent ablehnen</button>
+
+      <div class="transcript-row">
+        <span id="transcriptDot" class="dot" aria-hidden="true"></span>
+        <span id="transcriptText">Transkription noch nicht aktiv</span>
+        <span id="transcriptTimer" class="timer"></span>
+      </div>
+
+      <button id="ottomeetButton" class="secondary" type="button">Transkript starten (OttoMeet öffnen)</button>
+
+      <p id="message" class="message" aria-live="polite"></p>
+    </section>
+
+    <section id="tab-summary" class="panel" role="tabpanel" hidden>
+      <h2>Zusammenfassung</h2>
+      <p id="summaryText">Nach dem Meeting erstellt OttoMeet eine Zusammenfassung (PDF).
+        Sie wird per E-Mail oder im Teams-Chat verteilt – nur an Teilnehmer, die eingewilligt haben.</p>
+    </section>
+
+    <section id="tab-settings" class="panel" role="tabpanel" hidden>
+      <h2>Einstellungen</h2>
+      <dl class="facts">
+        <dt>Angemeldet als</dt><dd id="settingsUser">–</dd>
+        <dt>Automatische Einwilligung</dt>
+        <dd id="settingsPersistent">Für alle Meetings einstellbar in der OttoMeet-Desktop-App unter
+          <em>Einstellungen → Consent Settings</em>.</dd>
+        <dt>Version</dt><dd id="settingsVersion">–</dd>
+      </dl>
+      <p class="links"><a href="privacy.html" target="_blank" rel="noopener">Datenschutzhinweis</a></p>
     </section>
   </main>
 </body>

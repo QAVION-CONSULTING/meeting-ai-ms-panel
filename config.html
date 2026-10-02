@@ -3,31 +3,29 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>Meeting Links – Einrichtung</title>
+  <title>OttoMeet – Einrichtung</title>
   <link rel="stylesheet" href="styles.css">
   <script src="vendor/MicrosoftTeams.min.js"></script>
 </head>
 <body>
-  <main class="shell">
-    <section class="card">
-      <div class="eyebrow">Microsoft Teams</div>
-      <h1>Meeting Links hinzufügen</h1>
-      <p>Klicke auf <strong>Speichern</strong>, um die App zu dieser Besprechung hinzuzufügen.
-        Sie erscheint danach im Side Panel und kann von dort auf die Meeting-Bühne geteilt werden.</p>
-      <p id="status" class="status" aria-live="polite"></p>
-    </section>
+  <main class="panel">
+    <h2>OttoMeet zu dieser Besprechung hinzufügen</h2>
+    <p>Klicke auf <strong>Speichern</strong>. OttoMeet erscheint danach als eigenes Symbol in der Meeting-Leiste.
+      Dort kann jeder Teilnehmer seine Einwilligung zur Transkription geben oder zurückziehen.</p>
+    <p id="message" class="message" aria-live="polite"></p>
   </main>
   <script>
     (async () => {
-      const status = document.getElementById("status");
       try {
         await microsoftTeams.app.initialize();
+        const context = await microsoftTeams.app.getContext();
+        document.body.dataset.theme = context?.app?.theme || "default";
         const base = new URL(".", window.location.href).href;
         microsoftTeams.pages.config.registerOnSaveHandler((saveEvent) => {
           microsoftTeams.pages.config
             .setConfig({
-              entityId: "meeting-links",
-              suggestedDisplayName: "Meeting Links",
+              entityId: "ottomeet",
+              suggestedDisplayName: "OttoMeet",
               contentUrl: base + "index.html",
               websiteUrl: base + "index.html"
             })
@@ -36,7 +34,7 @@
         });
         microsoftTeams.pages.config.setValidityState(true);
       } catch (err) {
-        status.textContent = "Diese Seite muss innerhalb von Microsoft Teams geöffnet werden.";
+        document.getElementById("message").textContent = "Diese Seite muss innerhalb von Microsoft Teams geöffnet werden.";
       }
     })();
   </script>
