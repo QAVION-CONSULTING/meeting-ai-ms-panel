@@ -133,6 +133,12 @@ button:focus-visible { outline: 3px solid var(--brand); outline-offset: 2px; }
 .timer { margin-left: auto; font-variant-numeric: tabular-nums; }
 
 .message { font-size: 12px; min-height: 16px; }
+.mock-note {
+  font-size: 12px;
+  padding: 6px 8px;
+  border-radius: 4px;
+  border: 1px dashed var(--border);
+}
 
 .facts { margin: 0; display: grid; gap: 4px; }
 .facts dt { font-weight: 600; margin-top: 8px; }

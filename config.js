@@ -1,7 +1,5 @@
 window.OTTOMEET_CONFIG = {
   "version": "1.0.0",
-  "backendUrl": "",
-  "statusPollSeconds": 10,
   "labels": {
     "consent": "Consent geben",
     "withdraw": "Consent ablehnen",

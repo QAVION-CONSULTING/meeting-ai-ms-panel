@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>OttoMeet – Bestätigung (Mock)</title>
+  <link rel="stylesheet" href="../styles.css?v=9b314d3bd6">
+  <script src="../vendor/MicrosoftTeams.min.js?v=9b314d3bd6"></script>
+</head>
+<body>
+  <main class="panel">
+    <p class="mock-note">Mock – ersetzt die OttoMeet-Einwilligungsseite. Es werden keine Daten gesendet.</p>
+    <h2 id="title">Zustimmung zur Transkription</h2>
+    <p id="text"></p>
+    <button id="confirmButton" class="primary" type="button">Bestätigen</button>
+    <button id="cancelButton" class="secondary" type="button">Abbrechen</button>
+    <p id="message" class="message" aria-live="polite"></p>
+  </main>
+  <script>
+    (async () => {
+      const params = new URLSearchParams(window.location.search);
+      const act = params.get("act") === "decline" ? "decline" : "accept";
+      const chatId = params.get("chat_id") || "demo-meeting";
+      const user = params.get("user") || "demo-user";
+      const el = (id) => document.getElementById(id);
+
+      if (act === "decline") {
+        el("title").textContent = "Einwilligung zurückziehen";
+        el("text").textContent = "OttoMeet verarbeitet deine Wortbeiträge in diesem Meeting nicht mehr. "
+          + "Dein Mikrofon wird gesperrt, solange OttoMeet läuft.";
+        el("confirmButton").textContent = "Consent ablehnen";
+        el("confirmButton").className = "danger";
+      } else {
+        el("text").textContent = "Ich willige ein, dass OttoMeet dieses Meeting transkribiert und "
+          + "zusammenfasst. Ich kann die Einwilligung jederzeit zurückziehen.";
+        el("confirmButton").textContent = "Consent geben";
+      }
+
+      let inTeamsDialog = false;
+      try {
+        await microsoftTeams.app.initialize();
+        const context = await microsoftTeams.app.getContext();
+        document.body.dataset.theme = context?.app?.theme || "default";
+        inTeamsDialog = microsoftTeams.dialog?.url?.isSupported?.() === true;
+      } catch (_) {
+        // Außerhalb von Teams: Browser-Demo, Ergebnis über localStorage.
+      }
+
+      const finish = (result) => {
+        if (inTeamsDialog) {
+          microsoftTeams.dialog.url.submit(result);
+          return;
+        }
+        if (result) {
+          const key = `ottomeet:mock:${chatId}:${user}`;
+          let data = {};
+          try { data = JSON.parse(localStorage.getItem(key)) || {}; } catch (_) {}
+          localStorage.setItem(key, JSON.stringify({ ...data, decision: result.act, decidedAt: new Date().toISOString() }));
+        }
+        el("confirmButton").hidden = true;
+        el("cancelButton").hidden = true;
+        el("message").textContent = result
+          ? "Gespeichert. Du kannst dieses Fenster schließen."
+          : "Abgebrochen. Du kannst dieses Fenster schließen.";
+        window.close();
+      };
+
+      el("confirmButton").addEventListener("click", () => finish({ act }));
+      el("cancelButton").addEventListener("click", () => finish(null));
+    })();
+  </script>
+</body>
+</html>

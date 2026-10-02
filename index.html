@@ -4,10 +4,10 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>OttoMeet</title>
-  <link rel="stylesheet" href="styles.css?v=6c41fb78e1">
-  <script src="vendor/MicrosoftTeams.min.js?v=6c41fb78e1"></script>
-  <script src="config.js?v=6c41fb78e1"></script>
-  <script defer src="app.js?v=6c41fb78e1"></script>
+  <link rel="stylesheet" href="styles.css?v=9b314d3bd6">
+  <script src="vendor/MicrosoftTeams.min.js?v=9b314d3bd6"></script>
+  <script src="config.js?v=9b314d3bd6"></script>
+  <script defer src="app.js?v=9b314d3bd6"></script>
 </head>
 <body>
   <nav class="tabs" role="tablist">
@@ -54,7 +54,10 @@
         <dd id="settingsPersistent">Für alle Meetings einstellbar in der OttoMeet-Desktop-App unter
           <em>Einstellungen → Consent Settings</em>.</dd>
         <dt>Version</dt><dd id="settingsVersion">–</dd>
+        <dt>Demo-Modus</dt>
+        <dd>Ohne OttoMeet-Backend: Die Einwilligung wird nur lokal in diesem Teams-Client gespeichert.</dd>
       </dl>
+      <button id="resetMockButton" class="secondary" type="button">Mock-Status zurücksetzen</button>
       <p class="links"><a href="privacy.html" target="_blank" rel="noopener">Datenschutzhinweis</a></p>
     </section>
   </main>

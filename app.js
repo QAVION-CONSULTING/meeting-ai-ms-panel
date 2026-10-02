@@ -6,45 +6,52 @@
   const teams = window.microsoftTeams;
   const el = (id) => document.getElementById(id);
 
-  const POLL_MS = Math.max(5, Number(cfg.statusPollSeconds) || 10) * 1000;
-  const FAST_POLL_MS = 3000;
-  const FAST_POLL_DURATION_MS = 2 * 60 * 1000;
+  const DEMO_CHAT_ID = "demo-meeting";
+  const DEMO_USER = "demo-user";
 
-  const ctx = { inTeams: false, chatId: "", userOid: "", upn: "" };
-  let pollTimer = null;
-  let fastPollUntil = 0;
+  const ctx = { inTeams: false, chatId: DEMO_CHAT_ID, userOid: DEMO_USER, upn: "" };
   let timerInterval = null;
+  let memoryMock = null;
 
   const setMessage = (text) => { el("message").textContent = text || ""; };
 
-  function isHttps(url) {
+  // ---------- Mock-Speicher (ersetzt das OttoMeet-Backend) ----------
+
+  const storageKey = () => `ottomeet:mock:${ctx.chatId}:${ctx.userOid}`;
+
+  function loadMock() {
     try {
-      return new URL(url).protocol === "https:";
+      return JSON.parse(localStorage.getItem(storageKey())) || {};
     } catch {
-      return false;
+      return {};
     }
   }
 
-  async function openExternal(url) {
-    if (!isHttps(url)) throw new Error("Es sind nur HTTPS-Links erlaubt.");
-    if (teams?.app?.openLink) {
-      try {
-        await teams.app.openLink(url);
-        return;
-      } catch (_) {
-        // Manche Clients lehnen openLink für externe URLs ab – dann window.open.
-      }
+  function saveMock(data) {
+    try {
+      localStorage.setItem(storageKey(), JSON.stringify(data));
+    } catch {
+      // Ohne localStorage gilt der Status nur bis zum Schließen des Panels.
     }
-    const w = window.open(url, "_blank", "noopener,noreferrer");
-    if (!w) throw new Error("Der Link konnte nicht geöffnet werden (Popup blockiert?).");
+    memoryMock = data;
   }
 
-  function backendUrl(path, params) {
-    const url = new URL(path, cfg.backendUrl + "/");
-    for (const [key, value] of Object.entries(params)) {
-      if (value) url.searchParams.set(key, value);
+  function mockStatus() {
+    const data = memoryMock || loadMock();
+    if (!data.startedAt) {
+      data.startedAt = new Date().toISOString();
+      saveMock(data);
     }
-    return url.href;
+    return {
+      decision: data.decision || "none",
+      consented: data.decision === "accept",
+      started_at: data.startedAt,
+    };
+  }
+
+  function recordDecision(act) {
+    const data = memoryMock || loadMock();
+    saveMock({ ...data, decision: act, decidedAt: new Date().toISOString() });
   }
 
   // ---------- Darstellung ----------
@@ -54,12 +61,6 @@
     el("statusIcon").textContent = icon;
     el("statusTitle").textContent = title;
     el("statusText").textContent = text;
-  }
-
-  function renderButtons({ showConsent, consentEnabled = true, showWithdraw }) {
-    el("consentButton").hidden = !showConsent;
-    el("consentButton").disabled = !consentEnabled;
-    el("withdrawButton").hidden = !showWithdraw;
   }
 
   function renderTranscript(active, startedAt) {
@@ -80,123 +81,86 @@
     timerInterval = setInterval(tick, 1000);
   }
 
-  function renderStatus(status) {
-    if (!status.session_active) {
-      renderCard("pending", "i", "OttoMeet ist nicht aktiv",
-        "In diesem Meeting läuft gerade keine OttoMeet-Transkription. Eine Einwilligung ist möglich, sobald OttoMeet gestartet wurde.");
-      renderButtons({ showConsent: true, consentEnabled: false, showWithdraw: false });
-      renderTranscript(false);
-      return;
-    }
-
+  function render() {
+    const status = mockStatus();
     if (status.decision === "decline") {
       renderCard("bad", "✕", "Consent abgelehnt",
         "Du hast der Transkription widersprochen. Dein Mikrofon bleibt gesperrt, solange OttoMeet läuft.");
-      renderButtons({ showConsent: true, showWithdraw: false });
     } else if (status.consented) {
-      let reason = "OttoMeet ist aktiv und verarbeitet das Meeting.";
-      if (status.decision !== "accept" && status.recording_mode === "tagged") {
-        reason = "In diesem Meeting gilt die Einwilligung standardmäßig. Wenn du nicht einverstanden bist, lehne ab.";
-      } else if (status.decision !== "accept" && status.persistent_consent) {
-        reason = "Du hast die automatische Einwilligung für alle Meetings aktiviert.";
-      }
-      renderCard("ok", "✓", "Consent erteilt", reason);
-      renderButtons({ showConsent: false, showWithdraw: true });
+      renderCard("ok", "✓", "Consent erteilt", "OttoMeet ist aktiv und verarbeitet das Meeting.");
     } else {
       renderCard("warn", "!", "Consent erforderlich",
         "Damit OttoMeet das Meeting verarbeiten kann, benötigen wir deine Zustimmung.");
-      renderButtons({ showConsent: true, showWithdraw: false });
     }
-    renderTranscript(true, status.started_at);
-  }
-
-  function renderNoStatus(title, text) {
-    renderCard("warn", "!", title, text);
-    renderButtons({ showConsent: true, showWithdraw: false });
-    renderTranscript(false);
-  }
-
-  // ---------- Status vom OttoMeet-Backend ----------
-
-  async function fetchStatus() {
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 8000);
-    try {
-      const res = await fetch(
-        backendUrl("teams/app-status", { chat_id: ctx.chatId, user_oid: ctx.userOid, upn: ctx.upn }),
-        { headers: { Accept: "application/json" }, credentials: "omit", signal: controller.signal }
-      );
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      return await res.json();
-    } finally {
-      clearTimeout(timeout);
-    }
-  }
-
-  async function refresh() {
-    if (!ctx.inTeams) {
-      renderNoStatus("Nur in einer Teams-Besprechung verfügbar",
-        "Öffne OttoMeet über das App-Symbol in der Meeting-Leiste.");
-      return;
-    }
-    if (!isHttps(cfg.backendUrl)) {
-      renderNoStatus("Consent erforderlich",
-        "Damit OttoMeet das Meeting verarbeiten kann, benötigen wir deine Zustimmung. (Status-Anzeige: OttoMeet-Backend noch nicht verbunden.)");
-      return;
-    }
-    try {
-      renderStatus(await fetchStatus());
-    } catch {
-      renderNoStatus("Status derzeit nicht verfügbar",
-        "Das OttoMeet-Backend ist nicht erreichbar. Du kannst trotzdem einwilligen – der Status erscheint, sobald die Verbindung wieder steht.");
-    }
-  }
-
-  function schedulePoll() {
-    clearTimeout(pollTimer);
-    if (!ctx.inTeams || !isHttps(cfg.backendUrl)) return;
-    const delay = Date.now() < fastPollUntil ? FAST_POLL_MS : POLL_MS;
-    pollTimer = setTimeout(async () => {
-      if (!document.hidden) await refresh();
-      schedulePoll();
-    }, delay);
-  }
-
-  function pollFastForAWhile() {
-    fastPollUntil = Date.now() + FAST_POLL_DURATION_MS;
-    schedulePoll();
+    el("consentButton").hidden = status.consented;
+    el("withdrawButton").hidden = !status.consented;
+    renderTranscript(status.consented, status.started_at);
   }
 
   // ---------- Aktionen ----------
 
-  async function openConsentPage(act) {
-    setMessage("");
-    if (!isHttps(cfg.backendUrl)) {
-      setMessage("Das OttoMeet-Backend ist noch nicht konfiguriert (backendUrl in settings.json).");
-      return;
-    }
-    if (!ctx.chatId) {
-      setMessage("Das ist nur innerhalb einer Teams-Besprechung möglich.");
-      return;
-    }
+  function consentPageUrl(act) {
+    const url = new URL("mock/consent.html", window.location.href);
+    url.searchParams.set("act", act);
+    url.searchParams.set("chat_id", ctx.chatId);
+    url.searchParams.set("user", ctx.userOid);
+    return url.href;
+  }
+
+  function dialogSupported() {
     try {
-      await openExternal(backendUrl("teams/consent-entry", { chat_id: ctx.chatId, act }));
-      setMessage(act === "accept"
-        ? "Bitte die Zustimmung im geöffneten Browserfenster bestätigen."
-        : "Bitte die Ablehnung im geöffneten Browserfenster bestätigen.");
-      pollFastForAWhile();
-    } catch (err) {
-      setMessage(err?.message || "Die Seite konnte nicht geöffnet werden.");
+      return ctx.inTeams && teams?.dialog?.url?.isSupported?.() === true;
+    } catch {
+      return false;
     }
+  }
+
+  function openConsentPage(act) {
+    setMessage("");
+    if (dialogSupported()) {
+      teams.dialog.url.open(
+        {
+          url: consentPageUrl(act),
+          title: act === "accept" ? "OttoMeet – Zustimmung" : "OttoMeet – Ablehnung",
+          size: { height: 420, width: 480 },
+        },
+        ({ err, result }) => {
+          if (err || !result?.act) return;
+          recordDecision(result.act);
+          render();
+        }
+      );
+      return;
+    }
+    const w = window.open(consentPageUrl(act), "_blank");
+    if (!w) setMessage("Die Bestätigungsseite konnte nicht geöffnet werden (Popup blockiert?).");
   }
 
   async function openOttoMeet() {
     setMessage("");
-    try {
-      await openExternal(cfg.ottomeetUrl);
-    } catch (err) {
-      setMessage(err?.message || "OttoMeet konnte nicht geöffnet werden.");
+    const url = cfg.ottomeetUrl;
+    if (teams?.app?.openLink && ctx.inTeams) {
+      try {
+        await teams.app.openLink(url);
+        return;
+      } catch (_) {
+        // Manche Clients lehnen openLink für externe URLs ab – dann window.open.
+      }
     }
+    if (!window.open(url, "_blank", "noopener,noreferrer")) {
+      setMessage("OttoMeet konnte nicht geöffnet werden (Popup blockiert?).");
+    }
+  }
+
+  function resetMock() {
+    try {
+      localStorage.removeItem(storageKey());
+    } catch {
+      // ignorieren
+    }
+    memoryMock = null;
+    render();
+    setMessage("Mock-Status zurückgesetzt.");
   }
 
   function bindUi() {
@@ -209,6 +173,7 @@
     el("consentButton").addEventListener("click", () => openConsentPage("accept"));
     el("withdrawButton").addEventListener("click", () => openConsentPage("decline"));
     el("ottomeetButton").addEventListener("click", openOttoMeet);
+    el("resetMockButton").addEventListener("click", resetMock);
 
     for (const tab of document.querySelectorAll(".tab")) {
       tab.addEventListener("click", () => {
@@ -221,11 +186,13 @@
       });
     }
 
-    const onReturn = () => {
-      if (!document.hidden && ctx.inTeams) refresh();
-    };
-    document.addEventListener("visibilitychange", onReturn);
-    window.addEventListener("focus", onReturn);
+    // Bestätigung in einem anderen Fenster (Browser-Demo) aktualisiert das Panel.
+    window.addEventListener("storage", (event) => {
+      if (event.key === storageKey()) {
+        memoryMock = null;
+        render();
+      }
+    });
   }
 
   // ---------- Start ----------
@@ -239,10 +206,9 @@
     }
     const context = await teams.app.getContext();
     ctx.inTeams = true;
-    ctx.chatId = context?.chat?.id || "";
-    ctx.userOid = context?.user?.id || "";
+    ctx.chatId = context?.chat?.id || DEMO_CHAT_ID;
+    ctx.userOid = context?.user?.id || DEMO_USER;
     ctx.upn = context?.user?.userPrincipalName || "";
-    el("settingsUser").textContent = ctx.upn || "–";
 
     document.body.dataset.theme = context?.app?.theme || "default";
     teams.app.registerOnThemeChangeHandler?.((theme) => { document.body.dataset.theme = theme; });
@@ -252,7 +218,7 @@
   document.addEventListener("DOMContentLoaded", async () => {
     bindUi();
     await initTeams();
-    await refresh();
-    schedulePoll();
+    el("settingsUser").textContent = ctx.inTeams ? (ctx.upn || "–") : "Browser-Demo (außerhalb von Teams)";
+    render();
   });
 })();
